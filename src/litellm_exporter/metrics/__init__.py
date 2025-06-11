@@ -1,9 +1,11 @@
-from datetime import datetime
 import logging
+from datetime import datetime
+
 from prometheus_client import Gauge
+
+from ..config import MetricsConfig
 from ..database import DatabaseConnection
 from ..queries import MetricQueries
-from ..config import MetricsConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
