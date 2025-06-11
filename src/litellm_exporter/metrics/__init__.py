@@ -46,6 +46,9 @@ class LiteLLMMetrics:
         # Key metrics
         self.key_expiry = Gauge('litellm_key_expiry', 'Time until key expiry in seconds', ['key_name', 'key_alias'])
         self.key_spend = Gauge('litellm_key_spend', 'Current spend for key', ['key_name', 'key_alias'])
+        self.key_spend = Gauge(
+            "litellm_key_spend", "Current spend for key", ["key_name", "key_alias"]
+        )
 
 class MetricsCollector:
     def __init__(self, db_connection: DatabaseConnection, metrics: LiteLLMMetrics, config: MetricsConfig):
@@ -184,11 +187,20 @@ class MetricsCollector:
                         key_alias=key_alias
                     ).set(expiry_seconds)
 
-            if row['spend']:
+            if row["spend"]:
                 self.metrics.key_spend.labels(
-                    key_name=key_name,
-                    key_alias=key_alias
-                ).set(row['spend'])
+                    key_name=key_name, key_alias=key_alias
+                ).set(row["spend"])
+
+    def update_key_spend(self):
+        results = self.db.execute_query(MetricQueries.get_key_spend())
+        for row in results:
+            key_name = row["key_name"] or "none"
+            key_alias = row["key_alias"] or "none"
+            spend = row["total_spend"] or 0
+            self.metrics.key_spend.labels(key_name=key_name, key_alias=key_alias).set(
+                spend
+            )
 
     def update_all_metrics(self):
         try:
@@ -196,5 +208,6 @@ class MetricsCollector:
             self.update_rate_limits()
             self.update_budget_metrics()
             self.update_key_metrics()
+            self.update_key_spend()
         except Exception as e:
             logger.error(f"Error updating metrics: {e}")
