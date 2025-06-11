@@ -232,6 +232,58 @@ export METRICS_ERROR_WINDOW=1h
 python litellm_exporter.py
 ```
 
+## Local Docker Build & Test (for Development)
+
+To build and test the Docker container locally, use the provided Makefile for a streamlined workflow. This approach allows you to quickly build and test the Docker image in your local environment, streamlining development and troubleshooting.
+
+### Prerequisites
+- Docker installed and running
+- A valid `.env` file in the project root (see [Configuration](#configuration) for required variables)
+
+### Build the Docker Image
+```bash
+make build
+```
+This will build the image as `litellm-exporter:local` by default. You can override the image name if needed:
+```bash
+make build IMAGE_NAME=my-custom-image:dev
+```
+
+### Run the Container (Interactive)
+```bash
+make run
+```
+This will start the container interactively, mapping port 9090 and loading environment variables from `.env`.
+
+### Run the Container (Detached)
+```bash
+make run-detached
+```
+This will start the container in the background. To view logs:
+```bash
+make logs
+```
+
+### Stop and Clean Up
+```bash
+make stop
+```
+This stops and removes the running container. To remove the local image as well:
+```bash
+make clean
+```
+
+### Customization
+You can override the following variables at runtime:
+- `IMAGE_NAME` (default: `litellm-exporter:local`)
+- `CONTAINER_NAME` (default: `litellm-exporter`)
+- `PORT` (default: `9090`)
+
+Example:
+```bash
+make run-detached IMAGE_NAME=my-image:dev CONTAINER_NAME=litellm-dev PORT=8080
+```
+
 ## Prometheus Configuration
 
 Add the following to your `prometheus.yml`:
