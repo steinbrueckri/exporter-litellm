@@ -10,6 +10,7 @@ This exporter provides comprehensive Prometheus metrics for LiteLLM, exposing us
 - `litellm_team_spend`: Spend by team and model (labels: team_id, team_alias, model)
 - `litellm_org_spend`: Spend by organization and model (labels: organization_id, organization_alias, model)
 - `litellm_tag_spend`: Spend by request tag
+- `litellm_key_spend`: Spend by API key and model (labels: key_name, key_alias, model)
 
 ### Token Metrics
 - `litellm_total_tokens`: Total tokens used by model
@@ -304,6 +305,8 @@ Here are some example Prometheus queries for creating Grafana dashboards:
 - Spend by model: `sum by (model) (litellm_total_spend)`
 - Team spend by alias: `sum by (team_alias) (litellm_team_spend)`
 - Organization spend by alias: `sum by (organization_alias) (litellm_org_spend)`
+- API key spend by alias: `sum by (key_alias) (litellm_key_spend)`
+- API key spend by key name: `sum by (key_name) (litellm_key_spend)`
 
 ### Performance Monitoring
 - Request latency: `rate(litellm_request_duration_seconds_sum[5m]) / rate(litellm_request_duration_seconds_count[5m])`
