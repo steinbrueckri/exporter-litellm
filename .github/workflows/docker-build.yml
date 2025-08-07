@@ -17,7 +17,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            nicholascecere/exporter-litellm
+            steinbrueckri/exporter-litellm
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest
