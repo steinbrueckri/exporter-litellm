@@ -43,6 +43,9 @@ class DatabaseConnection:
         cur = None
         try:
             conn = self.connection_pool.getconn()
+            conn.autocommit = (
+                True  # Enable autocommit mode to avoid explicit commit operations
+            )
             cur = conn.cursor(cursor_factory=RealDictCursor)
             cur.execute(query, params or {})
             return cur.fetchall()
