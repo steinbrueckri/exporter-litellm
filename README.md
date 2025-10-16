@@ -51,6 +51,8 @@ This exporter provides comprehensive Prometheus metrics for LiteLLM, exposing us
 - `litellm_active_keys`: Number of active API keys (labels: entity_type, entity_id, entity_alias)
 - `litellm_expired_keys`: Number of expired API keys (labels: entity_type, entity_id, entity_alias)
 - `litellm_key_expiry`: Time until key expiry in seconds (labels: key_name, key_alias)
+- `litellm_key_budget`: Maximum budget for API key (labels: key_name, key_alias)
+- `litellm_key_budget_spend`: Current spend for API key within budget cycle (labels: key_name, key_alias)
 
 ### Model Metrics
 - `litellm_available_models`: Number of available models (labels: entity_type, entity_id, entity_alias)
@@ -324,6 +326,8 @@ Here are some example Prometheus queries for creating Grafana dashboards:
 ### API Key Management
 - Expiring keys alert: `litellm_key_expiry{key_alias="important-service"} < 86400` (keys expiring within 24h)
 - Active keys by entity: `sum by (entity_alias) (litellm_active_keys)`
+- Key budget utilization: `(litellm_key_budget_spend / litellm_key_budget) * 100` (percentage of budget used)
+- Keys near budget limit: `(litellm_key_budget_spend / litellm_key_budget) > 0.9` (keys using >90% of budget)
 
 ### Budget Monitoring
 - High budget utilization alert: `litellm_budget_utilization > 80`

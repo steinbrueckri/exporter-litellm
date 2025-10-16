@@ -107,6 +107,16 @@ class LiteLLMMetrics:
         self.key_spend = Gauge(
             "litellm_key_spend", "Current spend for key", ["key_name", "key_alias"]
         )
+        self.key_budget = Gauge(
+            "litellm_key_budget",
+            "Maximum budget for API key",
+            ["key_name", "key_alias"],
+        )
+        self.key_budget_spend = Gauge(
+            "litellm_key_budget_spend",
+            "Current spend for API key within budget cycle",
+            ["key_name", "key_alias"],
+        )
 
 
 class MetricsCollector:
@@ -270,6 +280,22 @@ class MetricsCollector:
                 spend
             )
 
+    def update_key_budget_metrics(self):
+        results = self.db.execute_query(MetricQueries.get_key_budget_metrics())
+        for row in results:
+            key_name = row["key_name"] or "none"
+            key_alias = row["key_alias"] or "none"
+
+            if row["max_budget"]:
+                self.metrics.key_budget.labels(
+                    key_name=key_name, key_alias=key_alias
+                ).set(row["max_budget"])
+
+            if row["current_spend"] is not None:
+                self.metrics.key_budget_spend.labels(
+                    key_name=key_name, key_alias=key_alias
+                ).set(row["current_spend"])
+
     def update_all_metrics(self):
         try:
             self.update_spend_metrics()
@@ -277,5 +303,6 @@ class MetricsCollector:
             self.update_budget_metrics()
             self.update_key_metrics()
             self.update_key_spend()
+            self.update_key_budget_metrics()
         except Exception as e:
             logger.error(f"Error updating metrics: {e}")

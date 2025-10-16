@@ -150,3 +150,25 @@ class MetricQueries:
         GROUP BY v.key_name, v.key_alias
         ORDER BY total_spend DESC
         """
+
+    @staticmethod
+    def get_key_budget_metrics() -> str:
+        return """
+        SELECT
+            v.key_name,
+            v.key_alias,
+            COALESCE(v.max_budget, b.max_budget) AS max_budget,
+            COALESCE(v.budget_reset_at, b.budget_reset_at) AS budget_reset_at,
+            (
+                SELECT COALESCE(SUM(l.spend), 0)
+                FROM "LiteLLM_SpendLogs" l
+                WHERE l.api_key = v.token
+                AND (
+                    COALESCE(v.budget_reset_at, b.budget_reset_at) IS NULL
+                    OR l."startTime" >= COALESCE(v.budget_reset_at, b.budget_reset_at)
+                )
+            ) AS current_spend
+        FROM "LiteLLM_VerificationToken" v
+        LEFT JOIN "LiteLLM_BudgetTable" b ON v.budget_id = b.budget_id
+        WHERE v.max_budget IS NOT NULL OR b.max_budget IS NOT NULL
+        """
