@@ -10,7 +10,7 @@ This exporter provides comprehensive Prometheus metrics for LiteLLM, exposing us
 - `litellm_team_spend`: Spend by team and model (labels: team_id, team_alias, model)
 - `litellm_org_spend`: Spend by organization and model (labels: organization_id, organization_alias, model)
 - `litellm_tag_spend`: Spend by request tag
-- `litellm_key_spend`: Spend by API key and model (labels: key_name, key_alias, model)
+- `litellm_key_spend`: Total spend for API key over the last 30 days (labels: key_name, key_alias)
 
 ### Token Metrics
 - `litellm_total_tokens`: Total tokens used by model
