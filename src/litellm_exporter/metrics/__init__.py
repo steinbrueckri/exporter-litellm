@@ -52,6 +52,18 @@ class LiteLLMMetrics:
             "litellm_cache_misses_total", "Total number of cache misses", ["model"]
         )
 
+        # Current TPM/RPM metrics 
+        self.current_tpm = Gauge(
+            "litellm_current_tpm",
+            "Current tokens per minute usage",
+            ["model", "entity_type", "entity_id", "entity_alias"],
+        )
+        self.current_rpm = Gauge(
+            "litellm_current_rpm",
+            "Current requests per minute usage",
+            ["model", "entity_type", "entity_id", "entity_alias"],
+        )
+
         # Rate limit metrics
         self.tpm_limit = Gauge(
             "litellm_tpm_limit",
@@ -296,6 +308,32 @@ class MetricsCollector:
                     key_name=key_name, key_alias=key_alias
                 ).set(row["current_spend"])
 
+    def update_current_rates(self):
+        """Update current TPM/RPM metrics based on last 1 minute of data"""
+        results = self.db.execute_query(MetricQueries.get_current_rate_metrics())
+
+        # Clear previous metrics so they drop to 0 when no activity
+        self.metrics.current_tpm.clear()
+        self.metrics.current_rpm.clear()
+
+        for row in results:
+            model = row["model"] or "unknown"
+            entity_type = row["entity_type"]
+            entity_id = row["entity_id"]
+            entity_alias = row["entity_alias"]
+            self.metrics.current_tpm.labels(
+                model=model,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                entity_alias=entity_alias,
+            ).set(row["total_tokens"] or 0)
+            self.metrics.current_rpm.labels(
+                model=model,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                entity_alias=entity_alias,
+            ).set(row["request_count"] or 0)
+
     def update_all_metrics(self):
         try:
             self.update_spend_metrics()
@@ -304,5 +342,6 @@ class MetricsCollector:
             self.update_key_metrics()
             self.update_key_spend()
             self.update_key_budget_metrics()
+            self.update_current_rates()
         except Exception as e:
             logger.error(f"Error updating metrics: {e}")

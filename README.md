@@ -25,8 +25,8 @@ This exporter provides comprehensive Prometheus metrics for LiteLLM, exposing us
 ### Rate Limit Metrics
 - `litellm_tpm_limit`: Tokens per minute limit by entity (labels: entity_type, entity_id, entity_alias)
 - `litellm_rpm_limit`: Requests per minute limit by entity (labels: entity_type, entity_id, entity_alias)
-- `litellm_current_tpm`: Current tokens per minute usage (labels: entity_type, entity_id, entity_alias)
-- `litellm_current_rpm`: Current requests per minute usage (labels: entity_type, entity_id, entity_alias)
+- `litellm_current_tpm`: Current tokens per minute usage (labels: model, entity_type, entity_id, entity_alias)
+- `litellm_current_rpm`: Current requests per minute usage (labels: model, entity_type, entity_id, entity_alias)
 
 ### Cache Metrics
 - `litellm_cache_hits_total`: Total number of cache hits by model
@@ -316,8 +316,8 @@ Here are some example Prometheus queries for creating Grafana dashboards:
 - Cache hit ratio: `rate(litellm_cache_hits_total[5m]) / (rate(litellm_cache_hits_total[5m]) + rate(litellm_cache_misses_total[5m]))`
 
 ### Rate Limit Monitoring
-- TPM utilization by alias: `sum by (entity_alias) (litellm_current_tpm / litellm_tpm_limit * 100)`
-- RPM utilization by alias: `sum by (entity_alias) (litellm_current_rpm / litellm_rpm_limit * 100)`
+- TPM utilization by entity: `litellm_current_tpm / on(entity_type, entity_id) group_left(entity_alias) litellm_tpm_limit * 100`
+- RPM utilization by entity: `litellm_current_rpm / on(entity_type, entity_id) group_left(entity_alias) litellm_rpm_limit * 100`
 
 ### User/Team Activity
 - Active teams by alias: `count by (team_alias) (litellm_member_count)`
