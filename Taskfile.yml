@@ -13,7 +13,7 @@ tasks:
   start:
     desc: Start hole stack to play with litellm-expoter
     cmds:
-      - docker compose -f {{.DOCKER_COMPOSE}} up -d
+      - docker compose -f {{.DOCKER_COMPOSE}} up --build -d
 
   stop:
     - docker compose -f {{.DOCKER_COMPOSE}} down --remove-orphans

@@ -30,7 +30,7 @@ def wait_for_http_ok(
 def compose_up() -> Generator[None, None, None]:
     workdir = os.path.abspath(os.path.dirname(__file__))
     compose_file = os.getenv("COMPOSE_FILE", "docker-compose-e2e.yml")
-    up_cmd = ["docker", "compose", "-f", compose_file, "up", "-d"]
+    up_cmd = ["docker", "compose", "-f", compose_file, "up", "-d", "--build"]
     subprocess.run(up_cmd, cwd=workdir, check=True)
     try:
         yield
