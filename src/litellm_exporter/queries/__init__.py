@@ -150,3 +150,76 @@ class MetricQueries:
         GROUP BY v.key_name, v.key_alias
         ORDER BY total_spend DESC
         """
+
+    @staticmethod
+    def get_key_budget_metrics() -> str:
+        return """
+        SELECT
+            v.key_name,
+            v.key_alias,
+            COALESCE(v.max_budget, b.max_budget) AS max_budget,
+            COALESCE(v.budget_reset_at, b.budget_reset_at) AS budget_reset_at,
+            (
+                SELECT COALESCE(SUM(l.spend), 0)
+                FROM "LiteLLM_SpendLogs" l
+                WHERE l.api_key = v.token
+                AND (
+                    COALESCE(v.budget_reset_at, b.budget_reset_at) IS NULL
+                    OR l."startTime" >= COALESCE(v.budget_reset_at, b.budget_reset_at)
+                )
+            ) AS current_spend
+        FROM "LiteLLM_VerificationToken" v
+        LEFT JOIN "LiteLLM_BudgetTable" b ON v.budget_id = b.budget_id
+        WHERE v.max_budget IS NOT NULL OR b.max_budget IS NOT NULL
+        """
+
+    @staticmethod
+    def get_current_rate_metrics() -> str:
+        return """
+        -- User-level current rates
+        SELECT
+            s.model,
+            'user' as entity_type,
+            u.user_id as entity_id,
+            COALESCE(u.user_alias, 'none') as entity_alias,
+            SUM(s.total_tokens) as total_tokens,
+            COUNT(*) as request_count
+        FROM "LiteLLM_SpendLogs" s
+        LEFT JOIN "LiteLLM_UserTable" u ON s."user" = u.user_id
+        WHERE s."startTime" >= NOW() - INTERVAL '1 minute'
+          AND u.user_id IS NOT NULL
+        GROUP BY s.model, u.user_id, u.user_alias
+
+        UNION ALL
+
+        -- Team-level current rates
+        SELECT
+            s.model,
+            'team' as entity_type,
+            t.team_id as entity_id,
+            COALESCE(t.team_alias, 'none') as entity_alias,
+            SUM(s.total_tokens) as total_tokens,
+            COUNT(*) as request_count
+        FROM "LiteLLM_SpendLogs" s
+        LEFT JOIN "LiteLLM_TeamTable" t ON s.team_id = t.team_id
+        WHERE s."startTime" >= NOW() - INTERVAL '1 minute'
+          AND t.team_id IS NOT NULL
+        GROUP BY s.model, t.team_id, t.team_alias
+
+        UNION ALL
+
+        -- Organization-level current rates
+        SELECT
+            s.model,
+            'organization' as entity_type,
+            o.organization_id as entity_id,
+            COALESCE(o.organization_alias, 'none') as entity_alias,
+            SUM(s.total_tokens) as total_tokens,
+            COUNT(*) as request_count
+        FROM "LiteLLM_SpendLogs" s
+        LEFT JOIN "LiteLLM_TeamTable" t ON s.team_id = t.team_id
+        LEFT JOIN "LiteLLM_OrganizationTable" o ON t.organization_id = o.organization_id
+        WHERE s."startTime" >= NOW() - INTERVAL '1 minute'
+          AND o.organization_id IS NOT NULL
+        GROUP BY s.model, o.organization_id, o.organization_alias
+        """
