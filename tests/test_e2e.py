@@ -6,7 +6,7 @@ import requests
 
 
 def generate_virtual_key() -> Dict:
-    base_url = os.getenv("LITELLM_BASE_URL", "http://0.0.0.0:4000")
+    base_url = os.getenv("LITELLM_BASE_URL", "http://localhost:4000")
     url = f"{base_url}/key/generate"
     headers = {
         "Authorization": "Bearer dummy-key",
@@ -16,8 +16,8 @@ def generate_virtual_key() -> Dict:
         "models": ["mock"],
         "metadata": {"user": "mock@steinbrueck.io"},
         "tpm_limit": 10000,  # tokens per minute
-        "rpm_limit": 120,    # requests per minute
-        "budget": 10.0,      # budget per 30 days
+        "rpm_limit": 120,  # requests per minute
+        "budget": 10.0,  # budget per 30 days
     }
     response = requests.post(url, headers=headers, json=data, timeout=10)
     response.raise_for_status()
@@ -25,7 +25,7 @@ def generate_virtual_key() -> Dict:
 
 
 def make_chat_completion(api_key: str) -> Dict:
-    base_url = os.getenv("LITELLM_BASE_URL", "http://0.0.0.0:4000")
+    base_url = os.getenv("LITELLM_BASE_URL", "http://localhost:4000")
     url = f"{base_url}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -36,7 +36,7 @@ def make_chat_completion(api_key: str) -> Dict:
         payload = {
             "model": "mock",
             "messages": [
-                {"role": "user", "content": f"hello #{i+1}"},
+                {"role": "user", "content": f"hello #{i + 1}"},
             ],
         }
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
@@ -46,7 +46,7 @@ def make_chat_completion(api_key: str) -> Dict:
 
 
 def fetch_metrics() -> List[str]:
-    exporter_url = os.getenv("EXPORTER_URL", "http://0.0.0.0:9090")
+    exporter_url = os.getenv("EXPORTER_URL", "http://localhost:9090")
     resp = requests.get(f"{exporter_url}/metrics", timeout=10)
     resp.raise_for_status()
     return resp.text.splitlines()
@@ -60,7 +60,7 @@ def test_end_to_end_flow(endpoints_ready: None) -> None:
 
     # Trigger traffic so exporter has data to expose
     make_chat_completion(api_key)
-    
+
     # 2) Poll exporter metrics briefly to allow first scrape cycle
     metrics: List[str] = []
     deadline = time.time() + 60
@@ -78,7 +78,9 @@ def test_end_to_end_flow(endpoints_ready: None) -> None:
         "litellm_prompt_tokens",
         "litellm_completion_tokens",
     ]
-    found = {name: any(line.startswith(name) for line in metrics) for name in expected_any}
+    found = {
+        name: any(line.startswith(name) for line in metrics) for name in expected_any
+    }
     assert all(found.values()), f"Missing expected metrics; present={found}"
 
     # Additional targeted checks
@@ -93,7 +95,9 @@ def test_end_to_end_flow(endpoints_ready: None) -> None:
                     pass
         raise AssertionError(f"Metric not found: {prefix!r}")
 
-    def find_metric_value_with_label(lines: List[str], metric: str, label_contains: str) -> float:
+    def find_metric_value_with_label(
+        lines: List[str], metric: str, label_contains: str
+    ) -> float:
         """Find metric value by searching any label order, matching substring in label block."""
         metric_prefix = f"{metric}{{"
         for line in lines:
@@ -102,7 +106,9 @@ def test_end_to_end_flow(endpoints_ready: None) -> None:
                     return float(line.split(" ")[-1])
                 except Exception:
                     continue
-        raise AssertionError(f"Metric with label not found: {metric} contains {label_contains!r}")
+        raise AssertionError(
+            f"Metric with label not found: {metric} contains {label_contains!r}"
+        )
 
     # We sent 3 requests; accept counting either under model="mock"
     # (alias) or under the underlying real model (e.g., gpt-3.5-turbo)
@@ -110,12 +116,16 @@ def test_end_to_end_flow(endpoints_ready: None) -> None:
     found_any = False
     for label in ('model="mock"', 'model="gpt-3.5-turbo"'):
         try:
-            requests_value = find_metric_value_with_label(metrics, "litellm_requests_total", label)
+            requests_value = find_metric_value_with_label(
+                metrics, "litellm_requests_total", label
+            )
             found_any = True
             break
         except AssertionError:
             continue
-    assert found_any, "litellm_requests_total with model label not found (mock or gpt-3.5-turbo)"
+    assert found_any, (
+        "litellm_requests_total with model label not found (mock or gpt-3.5-turbo)"
+    )
     assert requests_value >= 3.0, f"expected >=3 requests, got {requests_value}"
 
     # Spend and tokens: prefer checking concrete models; fall back to optional if label not present
