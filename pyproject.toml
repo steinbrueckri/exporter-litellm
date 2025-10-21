@@ -67,10 +67,9 @@ tag = true
 tag_name = "v{new_version}"
 message = "Bump version: {current_version} → {new_version}"
 
-[tool.bumpversion.files]
-"src/litellm_exporter/__init__.py" = [
-    '__version__ = "{current_version}"'
-]
+[tool.bumpversion.files."src/litellm_exporter/__init__.py"]
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
 
 
 [dependency-groups]
