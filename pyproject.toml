@@ -82,4 +82,5 @@ dev = [
     "docker>=6.0.0",
     "bump-my-version",
     "pgcli>=4.3.0",
+    "generate-changelog>=0.16.0",
 ]

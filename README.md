@@ -426,6 +426,92 @@ These metrics provide comprehensive monitoring of your LiteLLM deployment, enabl
 
 This project is licensed under the GLWT (Good Luck With That) Public License - see the [LICENSE](LICENSE) file for details.
 
+## Changelog and Release Process
+
+This project uses automated changelog generation and semantic versioning for releases.
+
+### Changelog Generation
+
+The project uses [generate-changelog](https://github.com/oscar0/generate-changelog) to automatically generate changelogs from git commits. The changelog follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format and uses conventional commits for categorization.
+
+#### Available Changelog Tasks
+
+```bash
+# Generate changelog from git commits
+task update-changelog
+
+# Preview changelog without writing to file
+task changelog-preview
+```
+
+The changelog automatically:
+- Categorizes commits by type (Added, Fixed, Changed, Removed, Security)
+- Groups commits by version tags
+- Filters out irrelevant commits (chore, ci, build, etc.)
+- Detects breaking changes
+- Parses git trailers (co-authored-by, etc.)
+
+### Release Process
+
+The project uses [bump-my-version](https://github.com/callowayproject/bump-my-version) for automated version management and semantic versioning.
+
+#### Available Release Tasks
+
+```bash
+# Create a patch release (1.2.0 → 1.2.1)
+task release-patch
+
+# Create a minor release (1.2.0 → 1.3.0)
+task release-minor
+
+# Create a major release (1.2.0 → 2.0.0)
+task release-major
+```
+
+Each release task will:
+1. Run the complete CI suite (linting, tests, build)
+2. Bump the version in `pyproject.toml`
+3. Generate an updated changelog
+4. Commit the changes
+5. Create and push a git tag
+6. Push changes to the main branch
+
+#### Release Workflow
+
+1. **Development**: Make changes and commit using conventional commit format
+2. **Testing**: Run `task ci` to ensure all tests pass
+3. **Release**: Choose appropriate release type and run the corresponding task
+4. **Verification**: Check that the tag was created and pushed correctly
+
+#### Conventional Commits
+
+The project follows [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+- `feat:` - New features (triggers minor release)
+- `fix:` - Bug fixes (triggers patch release)
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, etc.)
+- `refactor:` - Code refactoring
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `build:` - Build system changes
+- `ci:` - CI/CD changes
+- `chore:` - Maintenance tasks
+
+#### Breaking Changes
+
+Breaking changes should be indicated with `BREAKING CHANGE:` in the commit footer or by using `!` after the type/scope:
+
+```bash
+# Using BREAKING CHANGE: footer
+git commit -m "feat: add new configuration option
+
+BREAKING CHANGE: The old config format is no longer supported"
+
+# Using ! notation
+git commit -m "feat!: remove deprecated API endpoint"
+```
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.

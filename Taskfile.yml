@@ -89,6 +89,24 @@ tasks:
       - pgcli postgresql://litellm:litellm@localhost:5432/litellm
 
   #############################################################################
+  # Changelog tasks
+  #############################################################################
+  update-changelog:
+    desc: Generate changelog from git commits
+    deps: [uv-sync]
+    cmds:
+      - uv run generate-changelog --config .generate-changelog.yaml
+      - task: md-lint
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
+
+  changelog-preview:
+    desc: Preview changelog without writing to file
+    deps: [uv-sync]
+    cmds:
+      - uv run generate-changelog --config .generate-changelog.yaml --output notes
+
+  #############################################################################
   # Release tasks
   #############################################################################
   release-patch:
@@ -96,6 +114,9 @@ tasks:
     deps: [uv-sync, ci]
     cmds:
       - uv run bump-my-version bump patch
+      - task: changelog
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
       - git push origin main --tags
 
   release-minor:
@@ -103,6 +124,9 @@ tasks:
     deps: [uv-sync, ci]
     cmds:
       - uv run bump-my-version bump minor
+      - task: changelog
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
       - git push origin main --tags
 
   release-major:
@@ -110,4 +134,7 @@ tasks:
     deps: [uv-sync, ci]
     cmds:
       - uv run bump-my-version bump major
+      - task: changelog
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
       - git push origin main --tags
