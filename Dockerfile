@@ -9,21 +9,16 @@ RUN apt-get update && \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Add Tini (multi-arch)
-ARG TARGETARCH
-ENV TINI_VERSION=v0.19.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${TARGETARCH} /tini
-RUN chmod +x /tini
 
 # Install uv and dependencies
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:${PATH}"
+
+# Copy all necessary files for build
 COPY pyproject.toml ./
+COPY src/ ./src/
 RUN uv sync --no-dev
 ENV PATH="/app/.venv/bin:${PATH}"
-
-# Copy application code
-COPY src/litellm_exporter/ /app/litellm_exporter/
 
 # Default environment variables
 ENV METRICS_PORT=9090
@@ -52,9 +47,6 @@ RUN useradd -m -u 1000 exporter
 USER exporter
 
 EXPOSE ${METRICS_PORT}
-
-# Use tini as init system to handle signals properly
-ENTRYPOINT ["/tini", "--"]
 
 # Run the exporter module directly
 CMD ["python", "-m", "litellm_exporter"]

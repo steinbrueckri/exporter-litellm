@@ -1,5 +1,7 @@
 import logging
 import os
+import signal
+import sys
 import time
 
 from prometheus_client import start_http_server
@@ -14,6 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 def main():
+    # Set up signal handlers for graceful shutdown
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    logger.debug("Signal handlers configured")
     # Initialize configurations
     metrics_config = MetricsConfig()
     db_config = DatabaseConfig()
@@ -34,9 +40,30 @@ def main():
     logger.info(f"Metrics update interval: {metrics_config.update_interval} seconds")
 
     # Update metrics based on configured interval
-    while True:
-        collector.update_all_metrics()
-        time.sleep(metrics_config.update_interval)
+    logger.info("Starting metrics collection loop")
+    try:
+        while not shutdown_requested:
+            logger.debug("Updating all metrics")
+            collector.update_all_metrics()
+            logger.debug("Metrics update completed")
+            
+            # Use interruptible sleep - check for shutdown every second
+            for _ in range(metrics_config.update_interval):
+                if shutdown_requested:
+                    break
+                time.sleep(1)
+    except KeyboardInterrupt:
+        logger.warning("Received KeyboardInterrupt, shutting down...")
+    except Exception as e:
+        logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
+        raise
+    finally:
+        logger.info("Shutting down gracefully...")
+        # Close database connection if needed
+        if hasattr(db_connection, 'close'):
+            logger.debug("Closing database connection")
+            db_connection.close()
+        logger.info("Shutdown complete")
 
 
 if __name__ == "__main__":
