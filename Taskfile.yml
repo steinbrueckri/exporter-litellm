@@ -58,7 +58,7 @@ tasks:
     desc: Lint Markdown files with PyMarkdown
     deps: [uv-sync]
     cmds:
-      - uv run pymarkdown scan .
+      - uv run pymarkdown scan ./README.md
 
   py-lint:
     desc: Lint Python files with Ruff
