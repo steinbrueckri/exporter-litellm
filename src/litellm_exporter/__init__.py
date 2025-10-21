@@ -12,7 +12,7 @@ from .config import DatabaseConfig, MetricsConfig
 from .database import DatabaseConnection
 from .metrics import LiteLLMMetrics, MetricsCollector
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 # Configure logging
