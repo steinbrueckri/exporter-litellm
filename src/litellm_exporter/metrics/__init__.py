@@ -147,24 +147,33 @@ class MetricsCollector:
         results = self.db.execute_query(
             query, {"time_window": self.config.time_windows["spend"]}
         )
+        model_aggregates = {}
 
         for row in results:
             model = row["model"] or "unknown"
 
-            # Update model-level metrics
-            self.metrics.total_spend.labels(model=model).set(row["total_spend"] or 0)
-            self.metrics.total_tokens.labels(model=model).set(row["total_tokens"] or 0)
-            self.metrics.prompt_tokens.labels(model=model).set(
-                row["prompt_tokens"] or 0
-            )
-            self.metrics.completion_tokens.labels(model=model).set(
-                row["completion_tokens"] or 0
-            )
-            self.metrics.requests_total.labels(model=model).set(row["request_count"])
-            self.metrics.cache_hits.labels(model=model).set(row["cache_hits"] or 0)
-            self.metrics.cache_misses.labels(model=model).set(row["cache_misses"] or 0)
+            # Initialize model aggregate if not exists
+            if model not in model_aggregates:
+                model_aggregates[model] = {
+                    "total_spend": 0,
+                    "total_tokens": 0,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "request_count": 0,
+                    "cache_hits": 0,
+                    "cache_misses": 0,
+                }
 
-            # Update user/team/org specific metrics
+            # Accumulate values for this model
+            model_aggregates[model]["total_spend"] += row["total_spend"] or 0
+            model_aggregates[model]["total_tokens"] += row["total_tokens"] or 0
+            model_aggregates[model]["prompt_tokens"] += row["prompt_tokens"] or 0
+            model_aggregates[model]["completion_tokens"] += row["completion_tokens"] or 0
+            model_aggregates[model]["request_count"] += row["request_count"] or 0
+            model_aggregates[model]["cache_hits"] += row["cache_hits"] or 0
+            model_aggregates[model]["cache_misses"] += row["cache_misses"] or 0
+
+            # Update user/team/org specific metrics (these have unique label combinations)
             if row["user_id"]:
                 self.metrics.user_spend.labels(
                     user_id=row["user_id"],
@@ -185,6 +194,16 @@ class MetricsCollector:
                     organization_alias=row["organization_alias"] or "none",
                     model=model,
                 ).set(row["total_spend"] or 0)
+
+        # Now set model-level metrics once per model with aggregated values
+        for model, aggregates in model_aggregates.items():
+            self.metrics.total_spend.labels(model=model).set(aggregates["total_spend"])
+            self.metrics.total_tokens.labels(model=model).set(aggregates["total_tokens"])
+            self.metrics.prompt_tokens.labels(model=model).set(aggregates["prompt_tokens"])
+            self.metrics.completion_tokens.labels(model=model).set(aggregates["completion_tokens"])
+            self.metrics.requests_total.labels(model=model).set(aggregates["request_count"])
+            self.metrics.cache_hits.labels(model=model).set(aggregates["cache_hits"])
+            self.metrics.cache_misses.labels(model=model).set(aggregates["cache_misses"])
 
     def update_rate_limits(self):
         results = self.db.execute_query(MetricQueries.get_rate_limits())
