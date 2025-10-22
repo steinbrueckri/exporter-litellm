@@ -1,115 +1,141 @@
 # Changelog
 
-All notable changes to the LiteLLM Prometheus Exporter will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [1.0.0] - 2024-01-10
+## Unreleased (2025-10-21)
 
 ### Added
 
-- First stable release
-- Published Docker container to GitHub Container Registry (GHCR)
-- Container available at ghcr.io/ncecere/exporter-litellm:v1.0.0
+- Feat: add automated changelog generation and release process.
+    
+  - Add generate-changelog dependency for automated changelog generation
+  - Configure generate-changelog with pipeline-based configuration
+  - Add changelog and changelog-preview tasks to Taskfile
+  - Integrate changelog generation into release tasks
+  - Add comprehensive documentation for changelog and release process
+  - Support conventional commits and breaking change detection
+  - Filter irrelevant commits (chore, ci, build) automatically
+### Other
 
-## [0.4.1] - 2024-12-07
+- Chore: update changelog.
+    
+## v1.3.0 (2025-10-21)
+
+### Added
+
+- Feat(deploy): Improve db table handling and logging.
+    
+- Feat(deploy): Replace tini by propper sginal handling.
+    
+### Fixed
+
+- Fix(ci): Fix Bump version config.
+    
+- Fix(deploy): Sync git tag with version.
+    
+- Fix(code): Formating.
+    
+- Fix(ci): Rebuild e2e test.
+    
+- Fix(ci): Always build the container for e2e and local start.
+    
+- Fix(deploy): Sync python version with uv.
+    
+### Other
+
+- Bump version: 1.2.0 → 1.3.0.
+    
+- Chore(docs): Update readme.
+    
+## v1.2.0 (2025-10-20)
+
+### Added
+
+- Feat: Add new metrics (budget, budget spend, TPM, RPM) (#1).
+    
+  * feat: Add metric for key budget and key spend budget
+  * feat: Enhance doc for litellm_key_spend
+  * feat: Add metrics for current TPM/RPM usage
+
+  ---------
+
+  **co-authored-by:** LukasPoque <lukas.poque@lime.tech>
+
+### Other
+
+- Modernize (#2).
+    
+  * chore(repo): Cleanup
+  * feat(deploy): Replace pip by uv
+  * feat(tests): Add e2e tests
+  * feat(ci): Replace make with taskfile
+  * feat(ci): Add py and md lint
+  * feat(ci): Add CI GHA workflow
+  * fix(ci): Add container build to ci task
+## v1.1.4 (2025-08-07)
 
 ### Fixed
 
-- Added __main__.py to make package directly executable
-- Updated Dockerfile to properly handle Python package structure
-- Fixed Docker container execution by correcting module path
+- Fix: Problem with commits for selects.
+    
+## v1.1.3 (2025-08-07)
 
-## [0.4.0] - 2024-12-07
+### Other
+
+- Chore: prepair build on my dockerhub.
+    
+## v1.1.2 (2025-06-11)
+
+### Added
+
+- Feat: Add docs for metric for spend by key.
+    
+- Feat: add makefile for easy local build and testing.
+    
+- Feat: Add metric for spend by key.
+    
+### Fixed
+
+- Fix: sort imports.
+    
+- Fix: add tini bin for the right arch.
+    
+### Other
+
+- Chore: fix formating.
+    
+- Docs: update documentation.
+    
+## v1.1.1 (2024-12-07)
 
 ### Changed
 
-- Restructured project into a proper Python package under src/litellm_exporter/
-- Split monolithic exporter into modular components:
-  - config/: Configuration management
-  - database/: Database connection handling
-  - metrics/: Prometheus metrics and collector
-  - queries/: SQL query definitions
-- Updated Dockerfile to use new package structure
+- Update container path.
+    
+- Update.
+    
+### Other
 
-### Fixed
-
-- Fixed budget metrics query to properly use correct tables with budget_id relationships:
-  - Now using LiteLLM_EndUserTable for user budgets
-  - Now using LiteLLM_TeamMembership for team budgets
-  - Now using LiteLLM_OrganizationMembership for organization budgets
-
-### Removed
-
-- Removed root litellm_exporter.py in favor of proper package structure
-
-## [0.3.3] - 2024-01-09
-
-### Fixed
-
-- Fixed rate limits query to properly handle blocked status from different tables
-- Updated blocked status handling for users and teams
-- Improved error handling for database queries
-
-## [0.3.2] - 2024-01-09
+- Ci: update and push to docker hub.
+    
+- Build: Update CI.
+    
+- Build: add ci files.
+    
+## v1.0.0 (2024-12-07)
 
 ### Added
 
-- ENV_VARS.md with comprehensive documentation of all environment variables
-- Best practices for environment variable configuration
-- Example configurations for different deployment scenarios
-
-## [0.3.1] - 2024-01-09
-
-### Fixed
-
-- Fixed time window parameter not being passed correctly to spend metrics query
-
-## [0.3.0] - 2024-01-09
-
-### Added
-
-- Repository configuration files:
-  - .gitignore for Python projects
-  - .gitattributes for line ending handling
-  - .editorconfig for consistent coding styles
-  - pyproject.toml for Python tools configuration
-  - .pre-commit-config.yaml for code quality checks
-- POSTGRES_SETUP.md with detailed instructions for creating read-only database users
-- Security best practices documentation
-- Development environment configuration
-
+- Add missing git files.
+    
 ### Changed
 
-- Simplified docker-compose.yml to use existing LiteLLM database
-- Updated README.md with database security recommendations
-- Improved deployment documentation
+- Refactor: split into multiple files.
+    
+### Other
 
-## [0.2.0] - 2024-01-09
+- Chore: prepare release v1.0.0.
+    
+- Docs: Update documentation.
+    
+- Init.
+    
 
-### Added
-
-- Configurable metrics update interval via `METRICS_UPDATE_INTERVAL` environment variable
-- Docker Compose support for easier deployment
-- GLWT License
-- This CHANGELOG file
-
-### Changed
-
-- Updated documentation with new configuration options
-- Reorganized Dockerfile environment variables for better clarity
-
-## [0.1.0] - 2024-01-08
-
-### Added
-
-- Initial release of LiteLLM Prometheus Exporter
-- Basic metric collection for LiteLLM usage
-- Support for spend, token, request, rate limit, cache, budget, error, entity, API key, and model metrics
-- Configurable time windows for different metric types
-- Docker support
-- Comprehensive documentation
-- Database connection pooling
-- Health checks
-- Prometheus and Grafana integration examples

@@ -141,8 +141,41 @@ class MetricsCollector:
         self.db = db_connection
         self.metrics = metrics
         self.config = config
+        self.required_tables = [
+            "LiteLLM_SpendLogs",
+            "LiteLLM_UserTable", 
+            "LiteLLM_TeamTable",
+            "LiteLLM_OrganizationTable",
+            "LiteLLM_EndUserTable",
+            "LiteLLM_BudgetTable",
+            "LiteLLM_TeamMembership",
+            "LiteLLM_OrganizationMembership",
+            "LiteLLM_VerificationToken"
+        ]
+        self.tables_available = False
+
+    def check_tables_availability(self) -> bool:
+        """Check if all required tables are available."""
+        if self.tables_available:
+            return True
+        
+        # Check if the most critical table exists
+        if not self.db.check_table_exists("LiteLLM_SpendLogs"):
+            logger.warning("LiteLLM_SpendLogs table not available, skipping metrics collection")
+            return False
+        
+        # Wait for all required tables with timeout
+        if self.db.wait_for_required_tables(self.required_tables, max_wait_time=60):
+            self.tables_available = True
+            logger.info("All required tables are now available")
+            return True
+        
+        return False
 
     def update_spend_metrics(self):
+        if not self.check_tables_availability():
+            logger.debug("Skipping spend metrics update - tables not available")
+            return
         query = MetricQueries.get_spend_metrics(self.config.time_windows["spend"])
         results = self.db.execute_query(
             query, {"time_window": self.config.time_windows["spend"]}
@@ -206,6 +239,9 @@ class MetricsCollector:
             self.metrics.cache_misses.labels(model=model).set(aggregates["cache_misses"])
 
     def update_rate_limits(self):
+        if not self.check_tables_availability():
+            logger.debug("Skipping rate limits update - tables not available")
+            return
         results = self.db.execute_query(MetricQueries.get_rate_limits())
 
         for row in results:
@@ -242,6 +278,9 @@ class MetricsCollector:
                 ).set(1)
 
     def update_budget_metrics(self):
+        if not self.check_tables_availability():
+            logger.debug("Skipping budget metrics update - tables not available")
+            return
         results = self.db.execute_query(MetricQueries.get_budget_metrics())
 
         for row in results:
@@ -283,6 +322,9 @@ class MetricsCollector:
                     ).set(reset_seconds)
 
     def update_key_metrics(self):
+        if not self.check_tables_availability():
+            logger.debug("Skipping key metrics update - tables not available")
+            return
         results = self.db.execute_query(MetricQueries.get_key_metrics())
 
         for row in results:
@@ -302,6 +344,9 @@ class MetricsCollector:
                 ).set(row["spend"])
 
     def update_key_spend(self):
+        if not self.check_tables_availability():
+            logger.debug("Skipping key spend update - tables not available")
+            return
         results = self.db.execute_query(MetricQueries.get_key_spend())
         for row in results:
             key_name = row["key_name"] or "none"
@@ -312,6 +357,9 @@ class MetricsCollector:
             )
 
     def update_key_budget_metrics(self):
+        if not self.check_tables_availability():
+            logger.debug("Skipping key budget metrics update - tables not available")
+            return
         results = self.db.execute_query(MetricQueries.get_key_budget_metrics())
         for row in results:
             key_name = row["key_name"] or "none"
@@ -329,6 +377,9 @@ class MetricsCollector:
 
     def update_current_rates(self):
         """Update current TPM/RPM metrics based on last 1 minute of data"""
+        if not self.check_tables_availability():
+            logger.debug("Skipping current rates update - tables not available")
+            return
         results = self.db.execute_query(MetricQueries.get_current_rate_metrics())
 
         # Clear previous metrics so they drop to 0 when no activity

@@ -2,27 +2,31 @@ version: "3"
 
 vars:
   IMAGE_NAME: litellm-exporter:local
-  DOCKER_COMPOSE: ./tests/docker-compose-e2e.yml
+  DOCKER_COMPOSE: docker-compose.yml
 
 tasks:
+  #############################################################################
+  # Docker tasks
+  #############################################################################
   build:
     desc: Build the Docker image for local development
     cmds:
       - docker build -t {{.IMAGE_NAME}} .
 
-  start:
-    desc: Start hole stack to play with litellm-expoter
+  stack:
+    desc: Start stack to play with litellm-expoter
     cmds:
-      - docker compose -f {{.DOCKER_COMPOSE}} up -d
-
-  stop:
-    - docker compose -f {{.DOCKER_COMPOSE}} down --remove-orphans
+      - docker compose -f {{.DOCKER_COMPOSE}} up --build
 
   clean:
     desc: Remove the local Docker image
     cmds:
+      - docker compose rm -f
       - docker rmi {{.IMAGE_NAME}} || true
 
+  #############################################################################
+  # UV tasks
+  #############################################################################
   uv-venv:
     desc: Create or update local virtual env with uv
     run: once
@@ -41,6 +45,9 @@ tasks:
     cmds:
       - uv lock
 
+  #############################################################################
+  # Test tasks
+  #############################################################################
   test:
     desc: Run tests
     deps: [uv-sync]
@@ -51,7 +58,7 @@ tasks:
     desc: Lint Markdown files with PyMarkdown
     deps: [uv-sync]
     cmds:
-      - uv run pymarkdown scan .
+      - uv run pymarkdown scan ./README.md
 
   py-lint:
     desc: Lint Python files with Ruff
@@ -63,12 +70,71 @@ tasks:
     desc: Run all linters
     deps: [md-lint, py-lint]
     cmds:
-      - echo "All linters passed"
+      - task: md-lint
+      - task: py-lint
 
   ci:
     desc: Run CI suite (lint, tests)
     cmds:
       - task: lint
       - task: build
-      # FIXME: e2e tests fail in github actions i need to fix that later
-      # - task: test
+      - task: test
+
+  #############################################################################
+  # Database tasks
+  #############################################################################
+  db-connect:
+    desc: Connect to the PostgreSQL database using pgcli
+    cmds:
+      - pgcli postgresql://litellm:litellm@localhost:5432/litellm
+
+  #############################################################################
+  # Changelog tasks
+  #############################################################################
+  update-changelog:
+    desc: Generate changelog from git commits
+    deps: [uv-sync]
+    cmds:
+      - uv run generate-changelog --config .generate-changelog.yaml
+      - task: md-lint
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
+
+  changelog-preview:
+    desc: Preview changelog without writing to file
+    deps: [uv-sync]
+    cmds:
+      - uv run generate-changelog --config .generate-changelog.yaml --output notes
+
+  #############################################################################
+  # Release tasks
+  #############################################################################
+  release-patch:
+    desc: Create a patch release (0.1.0 → 0.1.1)
+    deps: [uv-sync, ci]
+    cmds:
+      - uv run bump-my-version bump patch
+      - task: changelog
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
+      - git push origin main --tags
+
+  release-minor:
+    desc: Create a minor release (0.1.0 → 0.2.0)
+    deps: [uv-sync, ci]
+    cmds:
+      - uv run bump-my-version bump minor
+      - task: changelog
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
+      - git push origin main --tags
+
+  release-major:
+    desc: Create a major release (0.1.0 → 1.0.0)
+    deps: [uv-sync, ci]
+    cmds:
+      - uv run bump-my-version bump major
+      - task: changelog
+      - git add CHANGELOG.md
+      - 'git commit -m "chore: update changelog"'
+      - git push origin main --tags

@@ -1,48 +1,9 @@
 import os
 import time
-from typing import Dict, List
+from typing import List
 
+import pytest
 import requests
-
-
-def generate_virtual_key() -> Dict:
-    base_url = os.getenv("LITELLM_BASE_URL", "http://localhost:4000")
-    url = f"{base_url}/key/generate"
-    headers = {
-        "Authorization": "Bearer dummy-key",
-        "Content-Type": "application/json",
-    }
-    data = {
-        "models": ["mock"],
-        "metadata": {"user": "mock@steinbrueck.io"},
-        "tpm_limit": 10000,  # tokens per minute
-        "rpm_limit": 120,  # requests per minute
-        "budget": 10.0,  # budget per 30 days
-    }
-    response = requests.post(url, headers=headers, json=data, timeout=10)
-    response.raise_for_status()
-    return response.json()
-
-
-def make_chat_completion(api_key: str) -> Dict:
-    base_url = os.getenv("LITELLM_BASE_URL", "http://localhost:4000")
-    url = f"{base_url}/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    last_response: Dict = {}
-    for i in range(3):
-        payload = {
-            "model": "mock",
-            "messages": [
-                {"role": "user", "content": f"hello #{i + 1}"},
-            ],
-        }
-        resp = requests.post(url, headers=headers, json=payload, timeout=20)
-        resp.raise_for_status()
-        last_response = resp.json()
-    return last_response
 
 
 def fetch_metrics() -> List[str]:
@@ -52,66 +13,102 @@ def fetch_metrics() -> List[str]:
     return resp.text.splitlines()
 
 
-def test_end_to_end_flow(endpoints_ready: None) -> None:
-    # 1) Create virtual key in LiteLLM
-    key_payload = generate_virtual_key()
-    assert "key" in key_payload or "message" in key_payload
-    api_key = key_payload.get("key") or key_payload.get("message")
-
-    # Trigger traffic so exporter has data to expose
-    make_chat_completion(api_key)
-
-    # 2) Poll exporter metrics briefly to allow first scrape cycle
+def wait_for_metrics() -> List[str]:
+    """Wait for exporter metrics to be available."""
     metrics: List[str] = []
     deadline = time.time() + 60
+    last_error = None
     while time.time() < deadline:
         try:
             metrics = fetch_metrics()
             if any(line.startswith("litellm_") for line in metrics):
-                break
-        except Exception:
-            pass
+                return metrics
+        except Exception as e:
+            last_error = str(e)
         time.sleep(2)
-    expected_any = [
+    
+    # If we didn't get any litellm metrics, provide helpful error message
+    error_msg = f"No litellm metrics found after 60 seconds. Last error: {last_error}"
+    if metrics:
+        error_msg += f"\nAvailable metrics: {[line.split()[0] for line in metrics if not line.startswith('#')][:10]}"
+    else:
+        error_msg += "\nNo metrics received at all - check if exporter is running on port 9090"
+    raise AssertionError(error_msg)
+
+
+def find_metric_value_with_label(
+    lines: List[str], metric: str, label_contains: str
+) -> float:
+    """Find metric value by searching any label order, matching substring in label block."""
+    metric_prefix = f"{metric}{{"
+    for line in lines:
+        if line.startswith(metric_prefix) and label_contains in line:
+            try:
+                return float(line.split(" ")[-1])
+            except Exception:
+                continue
+    raise AssertionError(
+        f"Metric with label not found: {metric} contains {label_contains!r}"
+    )
+
+def assert_metric_value(metrics: List[str], metric_name: str, expected_min: float = 0.0) -> None:
+    """Test that a metric has a reasonable value."""
+    for label in ('model="mock"', 'model="gpt-3.5-turbo"'):
+        try:
+            value = find_metric_value_with_label(metrics, metric_name, label)
+            assert value >= expected_min, f"{metric_name} should be >= {expected_min}, got {value}"
+            return
+        except AssertionError:
+            continue
+    # If no labeled line found, check for any line with this metric
+    for line in metrics:
+        if line.startswith(metric_name) and not line.startswith("#"):
+            try:
+                value = float(line.split(" ")[-1])
+                assert value >= expected_min, f"{metric_name} should be >= {expected_min}, got {value}"
+                return
+            except (ValueError, IndexError):
+                continue
+    pytest.fail(f"Could not find valid value for {metric_name}")
+
+
+def test_core_metrics_present(setup_test_data: None) -> None:
+    """Test that core metrics are present."""
+    metrics = wait_for_metrics()
+    
+    expected_core = [
         "litellm_requests_total",
-        "litellm_total_spend",
+        "litellm_total_spend", 
+        "litellm_total_tokens",
         "litellm_prompt_tokens",
         "litellm_completion_tokens",
     ]
-    found = {
-        name: any(line.startswith(name) for line in metrics) for name in expected_any
+    found_core = {
+        name: any(line.startswith(name) for line in metrics) for name in expected_core
     }
-    assert all(found.values()), f"Missing expected metrics; present={found}"
+    assert all(found_core.values()), f"Missing expected core metrics; present={found_core}"
 
-    # Additional targeted checks
-    def parse_metric_value(lines: List[str], metric: str, label_selector: str) -> float:
-        """Find metric value by exact prefix (strict order)."""
-        prefix = f"{metric}{label_selector} "
-        for line in lines:
-            if line.startswith(prefix):
-                try:
-                    return float(line.split(" ")[-1])
-                except Exception:
-                    pass
-        raise AssertionError(f"Metric not found: {prefix!r}")
 
-    def find_metric_value_with_label(
-        lines: List[str], metric: str, label_contains: str
-    ) -> float:
-        """Find metric value by searching any label order, matching substring in label block."""
-        metric_prefix = f"{metric}{{"
-        for line in lines:
-            if line.startswith(metric_prefix) and label_contains in line:
-                try:
-                    return float(line.split(" ")[-1])
-                except Exception:
-                    continue
-        raise AssertionError(
-            f"Metric with label not found: {metric} contains {label_contains!r}"
-        )
+def test_additional_metrics_present(setup_test_data: None) -> None:
+    """Test that additional metrics are present."""
+    metrics = wait_for_metrics()
+    
+    expected_additional = [
+        "litellm_cache_hits_total",
+        "litellm_cache_misses_total",
+        "litellm_key_spend",
+    ]
+    found_additional = {
+        name: any(line.startswith(name) for line in metrics) for name in expected_additional
+    }
+    assert all(found_additional.values()), f"Missing expected additional metrics; present={found_additional}"
 
-    # We sent 3 requests; accept counting either under model="mock"
-    # (alias) or under the underlying real model (e.g., gpt-3.5-turbo)
+
+def test_request_count(setup_test_data: None) -> None:
+    """Test that we have the expected number of requests."""
+    metrics = wait_for_metrics()
+    
+    # We sent 3 requests; accept counting either under model="mock" or gpt-3.5-turbo
     requests_value: float = 0.0
     found_any = False
     for label in ('model="mock"', 'model="gpt-3.5-turbo"'):
@@ -128,17 +125,51 @@ def test_end_to_end_flow(endpoints_ready: None) -> None:
     )
     assert requests_value >= 3.0, f"expected >=3 requests, got {requests_value}"
 
-    # Spend and tokens: prefer checking concrete models; fall back to optional if label not present
-    def assert_metric_non_negative_for_any_model(metric_name: str) -> None:
-        for label in ('model="mock"', 'model="gpt-3.5-turbo"'):
-            try:
-                value = find_metric_value_with_label(metrics, metric_name, label)
-                assert value >= 0.0
-                return
-            except AssertionError:
-                continue
-        # If no labeled line found, rely on earlier presence check and skip strict value assertion
-        return
 
-    assert_metric_non_negative_for_any_model("litellm_total_spend")
-    assert_metric_non_negative_for_any_model("litellm_prompt_tokens")
+def test_metric_values(setup_test_data: None) -> None:
+    """Test that metrics have reasonable values."""
+    metrics = wait_for_metrics()
+    
+    # Test that we have reasonable values for our 3 requests
+    assert_metric_value(metrics, "litellm_requests_total", expected_min=3.0)
+    assert_metric_value(metrics, "litellm_total_spend", expected_min=0.0)
+    assert_metric_value(metrics, "litellm_total_tokens", expected_min=0.0)
+    assert_metric_value(metrics, "litellm_prompt_tokens", expected_min=0.0)
+    assert_metric_value(metrics, "litellm_completion_tokens", expected_min=0.0)
+    
+    # Test cache metrics (should be 0 for our test)
+    assert_metric_value(metrics, "litellm_cache_hits_total", expected_min=0.0)
+    assert_metric_value(metrics, "litellm_cache_misses_total", expected_min=0.0)
+    
+    # Test key spend (should match total spend)
+    assert_metric_value(metrics, "litellm_key_spend", expected_min=0.0)
+
+
+def test_metrics_format(setup_test_data: None) -> None:
+    """Test that metrics have proper format and structure."""
+    metrics = fetch_metrics()
+    
+    # Test that we have proper metric format (HELP and TYPE comments)
+    help_lines = [line for line in metrics if line.startswith("# HELP")]
+    type_lines = [line for line in metrics if line.startswith("# TYPE")]
+    
+    assert len(help_lines) > 0, "No HELP comments found in metrics"
+    assert len(type_lines) > 0, "No TYPE comments found in metrics"
+    
+    # Test that litellm metrics have proper format
+    litellm_metrics = [line for line in metrics if line.startswith("litellm_") and not line.startswith("#")]
+    assert len(litellm_metrics) > 0, "No litellm metrics found"
+    
+    for line in litellm_metrics:
+        # Should have either a value or labels
+        if "{" in line and "}" in line:
+            # Has labels
+            assert " " in line, f"Metric with labels should have a value: {line}"
+        else:
+            # Simple metric without labels
+            parts = line.split(" ")
+            assert len(parts) >= 2, f"Metric should have a value: {line}"
+            try:
+                float(parts[-1])
+            except ValueError:
+                pytest.fail(f"Metric value should be numeric: {line}")

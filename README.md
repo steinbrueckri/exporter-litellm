@@ -226,15 +226,15 @@ docker run -d \
   -e METRICS_SPEND_WINDOW=30d \
   -e METRICS_REQUEST_WINDOW=24h \
   -e METRICS_ERROR_WINDOW=1h \
-  nicholascecere/exporter-litellm:latest
+  steinbrueckri/exporter-litellm:latest
 ```
 
 ## Running Locally
 
-1. Install dependencies:
+1. Install dependencies using uv:
 
 ```bash
-pip install -r requirements.txt
+task uv-sync
 ```
 
 1. Set environment variables:
@@ -256,75 +256,117 @@ export METRICS_ERROR_WINDOW=1h
 1. Run the exporter:
 
 ```bash
-python litellm_exporter.py
+uv run python -m litellm_exporter
 ```
 
 ## Local Docker Build & Test (for Development)
 
-To build and test the Docker container locally, use the provided Makefile for a streamlined workflow. This approach allows you to quickly build and test the Docker image in your local environment, streamlining development and troubleshooting.
+To build and test the Docker container locally, use the provided Taskfile for a streamlined workflow. This approach allows you to quickly build and test the Docker image in your local environment, streamlining development and troubleshooting.
 
 ### Prerequisites
 
 - Docker installed and running
-- A valid `.env` file in the project root (see [Configuration](#configuration) for required variables)
+- Task (taskfile.dev) installed
 
 ### Build the Docker Image
 
 ```bash
-make build
+task build
 ```
 
 This will build the image as `litellm-exporter:local` by default. You can override the image name if needed:
 
 ```bash
-make build IMAGE_NAME=my-custom-image:dev
+task build IMAGE_NAME=my-custom-image:dev
 ```
 
-### Run the Container (Interactive)
+### Start the Full Stack
 
 ```bash
-make run
+task start
 ```
 
-This will start the container interactively, mapping port 9090 and loading environment variables from `.env`.
+This will start the complete stack using docker-compose, including the exporter and any dependencies.
 
-### Run the Container (Detached)
+### Stop the Stack
 
 ```bash
-make run-detached
+task stop
 ```
 
-This will start the container in the background. To view logs:
+This stops and removes all running containers.
+
+### Development Workflow
+
+For a complete development workflow:
 
 ```bash
-make logs
+# Build the image
+task build
+
+# Start the full stack
+task start
+
+# Run tests
+task test
+
+# Run linting
+task lint
+
+# Stop everything
+task stop
 ```
 
-### Stop and Clean Up
+### Available Tasks
+
+The Taskfile provides several useful commands for development:
+
+- `task build` - Build the Docker image
+- `task start` - Start the full stack with docker-compose
+- `task stop` - Stop all containers
+- `task clean` - Remove the local image
+- `task test` - Run tests with pytest
+- `task lint` - Run all linters (markdown and Python)
+- `task ci` - Run the complete CI suite
+
+## Development and Testing
+
+### Running Tests
+
+The project uses pytest for testing. To run tests:
 
 ```bash
-make stop
+# Run all tests
+task test
+
+# Or run directly with uv
+uv run pytest
 ```
 
-This stops and removes the running container. To remove the local image as well:
+### Code Quality
+
+The project includes linting for both Python and Markdown:
 
 ```bash
-make clean
+# Run all linters
+task lint
+
+# Run only Python linting
+task py-lint
+
+# Run only Markdown linting
+task md-lint
 ```
 
-### Customization
+### Complete CI Pipeline
 
-You can override the following variables at runtime:
-
-- `IMAGE_NAME` (default: `litellm-exporter:local`)
-- `CONTAINER_NAME` (default: `litellm-exporter`)
-- `PORT` (default: `9090`)
-
-Example:
+To run the complete CI pipeline locally:
 
 ```bash
-make run-detached IMAGE_NAME=my-image:dev CONTAINER_NAME=litellm-dev PORT=8080
+task ci
 ```
+
+This will run linting, build the Docker image, and execute all tests.
 
 ## Prometheus Configuration
 
@@ -383,6 +425,92 @@ These metrics provide comprehensive monitoring of your LiteLLM deployment, enabl
 ## License
 
 This project is licensed under the GLWT (Good Luck With That) Public License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog and Release Process
+
+This project uses automated changelog generation and semantic versioning for releases.
+
+### Changelog Generation
+
+The project uses [generate-changelog](https://github.com/oscar0/generate-changelog) to automatically generate changelogs from git commits. The changelog follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format and uses conventional commits for categorization.
+
+#### Available Changelog Tasks
+
+```bash
+# Generate changelog from git commits
+task update-changelog
+
+# Preview changelog without writing to file
+task changelog-preview
+```
+
+The changelog automatically:
+- Categorizes commits by type (Added, Fixed, Changed, Removed, Security)
+- Groups commits by version tags
+- Filters out irrelevant commits (chore, ci, build, etc.)
+- Detects breaking changes
+- Parses git trailers (co-authored-by, etc.)
+
+### Release Process
+
+The project uses [bump-my-version](https://github.com/callowayproject/bump-my-version) for automated version management and semantic versioning.
+
+#### Available Release Tasks
+
+```bash
+# Create a patch release (1.2.0 → 1.2.1)
+task release-patch
+
+# Create a minor release (1.2.0 → 1.3.0)
+task release-minor
+
+# Create a major release (1.2.0 → 2.0.0)
+task release-major
+```
+
+Each release task will:
+1. Run the complete CI suite (linting, tests, build)
+2. Bump the version in `pyproject.toml`
+3. Generate an updated changelog
+4. Commit the changes
+5. Create and push a git tag
+6. Push changes to the main branch
+
+#### Release Workflow
+
+1. **Development**: Make changes and commit using conventional commit format
+2. **Testing**: Run `task ci` to ensure all tests pass
+3. **Release**: Choose appropriate release type and run the corresponding task
+4. **Verification**: Check that the tag was created and pushed correctly
+
+#### Conventional Commits
+
+The project follows [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+- `feat:` - New features (triggers minor release)
+- `fix:` - Bug fixes (triggers patch release)
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, etc.)
+- `refactor:` - Code refactoring
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `build:` - Build system changes
+- `ci:` - CI/CD changes
+- `chore:` - Maintenance tasks
+
+#### Breaking Changes
+
+Breaking changes should be indicated with `BREAKING CHANGE:` in the commit footer or by using `!` after the type/scope:
+
+```bash
+# Using BREAKING CHANGE: footer
+git commit -m "feat: add new configuration option
+
+BREAKING CHANGE: The old config format is no longer supported"
+
+# Using ! notation
+git commit -m "feat!: remove deprecated API endpoint"
+```
 
 ## Changelog
 
