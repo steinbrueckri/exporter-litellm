@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (2025-10-21)
+## Unreleased (2025-10-22)
 
 ### Added
 
@@ -13,6 +13,10 @@
   - Add comprehensive documentation for changelog and release process
   - Support conventional commits and breaking change detection
   - Filter irrelevant commits (chore, ci, build) automatically
+### Fixed
+
+- Fix: aggregate model-level metrics correctly across multiple entities (#5).
+    
 ### Other
 
 - Chore: update changelog.
