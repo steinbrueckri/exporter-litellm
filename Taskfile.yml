@@ -96,9 +96,6 @@ tasks:
     deps: [uv-sync]
     cmds:
       - uv run generate-changelog --config .generate-changelog.yaml
-      - task: md-lint
-      - git add CHANGELOG.md
-      - 'git commit -m "chore: update changelog"'
 
   changelog-preview:
     desc: Preview changelog without writing to file
@@ -113,28 +110,25 @@ tasks:
     desc: Create a patch release (0.1.0 → 0.1.1)
     deps: [uv-sync, ci]
     cmds:
-      - uv run bump-my-version bump patch
-      - task: changelog
+      - task: update-changelog
       - git add CHANGELOG.md
-      - 'git commit -m "chore: update changelog"'
+      - uv run bump-my-version bump patch
       - git push origin main --tags
 
   release-minor:
     desc: Create a minor release (0.1.0 → 0.2.0)
     deps: [uv-sync, ci]
     cmds:
-      - uv run bump-my-version bump minor
-      - task: changelog
+      - task: update-changelog
       - git add CHANGELOG.md
-      - 'git commit -m "chore: update changelog"'
+      - uv run bump-my-version bump minor
       - git push origin main --tags
 
   release-major:
     desc: Create a major release (0.1.0 → 1.0.0)
     deps: [uv-sync, ci]
     cmds:
-      - uv run bump-my-version bump major
-      - task: changelog
+      - task: update-changelog
       - git add CHANGELOG.md
-      - 'git commit -m "chore: update changelog"'
+      - uv run bump-my-version bump major
       - git push origin main --tags
