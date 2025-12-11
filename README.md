@@ -123,6 +123,16 @@ Different time windows affect both metric accuracy and database performance:
   - Higher values reduce database load but decrease metric freshness
   - Adjust based on your monitoring needs and database capacity
 
+### Known Issues
+
+On larger databases, certain queries (particularly for API key budget metrics) can be slow without proper indexes. To improve performance, create the following index on the `LiteLLM_SpendLogs` table:
+
+```sql
+CREATE INDEX CONCURRENTLY IF NOT EXISTS litellm_spendlogs_api_key_starttime_idx
+    ON "LiteLLM_SpendLogs" (api_key, "startTime")
+    INCLUDE (spend);
+```
+
 ## Running with Docker Compose
 
 The easiest way to get started is using Docker Compose:
