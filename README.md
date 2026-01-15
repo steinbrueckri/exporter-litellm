@@ -19,12 +19,6 @@ This exporter provides comprehensive Prometheus metrics for LiteLLM, exposing us
 - `litellm_prompt_tokens`: Prompt tokens used by model
 - `litellm_completion_tokens`: Completion tokens used by model
 
-### Request Metrics
-
-- `litellm_request_duration_seconds`: Request duration histogram
-- `litellm_requests_total`: Total number of requests by model and status
-- `litellm_parallel_requests`: Current parallel requests by entity (labels: entity_type, entity_id, entity_alias)
-
 ### Rate Limit Metrics
 
 - `litellm_tpm_limit`: Tokens per minute limit by entity (labels: entity_type, entity_id, entity_alias)
